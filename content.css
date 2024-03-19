@@ -5,37 +5,56 @@
     font-weight: normal;
 } 
 
-#p2{
-    position: fixed;
-    z-index: 10;
-    color: white;
-    left: 1%;
-    top: 1%;
-    margin: 0;
-    font-family: "MultiTypePixelDisplay"; 
-    font-size: 14px
+#endScreen {
+    /*width: 80vw;
+    /*margin-top: 20%;
+    margin-left: 10%;*/
+    /* margin: 5vw auto; */
+    /* border: 2px solid white; */
+    z-index: 4;
+    position: absolute;
+    display: none;
+    justify-content: center;
+    align-self: center;
+    margin-top: -29.5%;
+    margin-left: 16.9%;
+    /*border-radius: 20%;*/
 }
 
-#spaceCanvas{
-    color: white;
-    /* margin-top: 4%;
-    margin-bottom: -4%;
-    margin-left: 3.1%; */
-    display: block;
-    z-index: 33;
-}
-
-#studyScreenSpace {
+#studyScreen {
+    /*width: 80vw;
+    margin-top: 20vw;
+    margin-left: 10vw;
+    /* margin: 5vw auto; */
+    /* border: 2px solid white; */
+    /*display: flex;
+    justify-content: center;
+    border-radius: 20%;*/
     z-index: 4;
     position: absolute;
     display: flex;
     justify-content: center;
     align-self: center;
-    margin-top: -42%;
+    margin-top: -35.3%;
     margin-left: 16.9%;
 }
 
-#close3 {
+#loss {
+    color: #ffffff;
+    font-size: 5vw;
+    margin: auto;
+    text-align: center;
+}
+
+#close {
+    margin-top: 3%;
+    margin-left: -7%;
+    width: 3vw;
+    height: 3vw;
+    display: none;
+}
+
+#close2 {
     margin-top: 3%;
     margin-left: -7%;
     width: 3vw;
@@ -44,12 +63,50 @@
     z-index: 5;
 }
 
-#deadinspace {
-    z-index: 4;
+#body {
+    margin: 0;
+    background-color: rgb(0, 0, 0);
+}
+
+#p1{
+    color: white; 
+    font-family: "MultiTypePixelDisplay";
+    font-size: 14px;
+    margin-top: 1.5%;
+    margin-bottom: -5%;
+    margin-left: 7.6%;
+}
+
+#scoreEl{
+    color: white;
+    font-family: "MultiTypePixelDisplay"; 
+    font-size: 14px;
+    margin-top: -0.7%;
+    margin-bottom: -4%;
+    margin-left: 0%;
+}
+
+#packmanCanvas{
+    color: white;
+    margin-top: 4%;
+    margin-bottom: -4%;
+    margin-left: 3.1%;
+    display: block;
+    z-index: 33;
+}
+
+#backToMenu{
+    z-index: 1;
     position: absolute;
-    display: flex;
-    justify-content: center;
-    align-self: center;
-    margin-top: -42%;
-    margin-left: 16.9%;
+    display: block;
+    margin-top: -49.5%;
+    margin-left: 90.8%;
+}
+
+#sound{
+    z-index: 1;
+    position: absolute;
+    display: block;
+    margin-top: -49.5%;
+    margin-left: 87%;
 }

@@ -1,35 +1,53 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- <link href="./content.css" rel="stylesheet" type="text/css">
+    <link href="./fonts/MultiTypePixel Display.otf"> -->
     <link href="./style.css" rel="stylesheet" type="text/css">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="./index.js"></script>
+    <script src="index.js"></script>
     <title>Document</title>
 </head>
 <body>
-
+    
 <style>
     body {
         margin: 0;
+        background-color: rgb(0, 0, 0);
     }
 </style>
-
-<p id="p2">
-    <span>Score:</span> <span id="scoreEl">0</span>
+    
+    
+<!-- <p><span><p id="p1">Score: </p></span> <span id="scoreEl"><p id="scoreEl">0</p></span></p>  -->
+<p id="p1"> 
+    <span>Score: </span> <span id="scoreEl">0</span>
 </p>
+    
+<audio src="try_to_catch_me.mp3"></audio>
 
-<canvas id="spaceCanvas"></canvas>
-
-<div id="studyScreenSpace">
-    <img src="./img/howTo.svg">
-    <div id="close3"><img src="./img/close3.svg" id="but"></div>
+<canvas id="packmanCanvas"></canvas>
+    
+        
+<div id="backToMenu">
+    <img src="./img/closeGame.svg">
+</div>
+    
+<div id="sound">
+    <img src="./img/soundOff.svg">
+</div>
+    
+<div id="studyScreen">
+    <img src="./img/how.svg">
+    <div id="close2"><img src="./img/close.png" id="but"></div>
 </div>
 
-<div id="endScreenSpace">
-    <img src="./img/deadinspace.svg">
-    <div id="close3"><img src="./img/close3.svg" id="but"></div>
+<div id="endScreen">
+    <img src="./img/dead.svg">
+    <div id="close"><img src="./img/close.png" id="but"></div>
+    <!-- <p id="loss">ну ты и лох</p> -->
 </div>
-
+    
+    
 </body>
 </html>
