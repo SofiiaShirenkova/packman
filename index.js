@@ -1,93 +1,219 @@
+document.addEventListener("DOMContentLoaded", function() {
+
+
+const scoreEl = document.querySelector('#scoreEl')
 const canvas = document.querySelector('canvas')
 const c = canvas.getContext('2d')
-const scoreEl = document.querySelector('#scoreEl') //счётчик баллов - съеденых точечек
 
-//размер дяди * canvas.height / 920
+canvas.width = innerWidth 
+canvas.height = innerHeight 
 
-canvas.width = innerWidth
-canvas.height = innerHeight
+let state = 'study'
 
-let minedge = Math.min(canvas.height, canvas.width)
-console.log(minedge / 40)
+let animationId
 
-class Boundary {
-    static width = minedge / 23 // создали статическое значение ширины и высоты границы
-    static height = minedge / 23
-    constructor({ position }) { //square
-        this.position = position
-        this.width = minedge / 23
-        this.height = minedge / 23
+//создаём игрока 
+class Player {
+    constructor() {
+        this.velocity = {
+            x: 0,
+            y: 0
+        }
 
-        // this.image = image
-    }
+        this.opacity = 1
 
+        const image = new Image()
+        image.src = './img/spaceship.svg'
+        image.onload =  () => { //при загрузке установи эти параметры
+            const scale = 0.3
+            this.image = image
+            this.width = image.width * scale
+            this.height = image.height * scale
+            this.position = {
+                x: canvas.width / 2 - this.width / 2,
+                y: canvas.height - this.height - 20
+            }
     
-    draw() {
-            c.fillStyle = '#00ff00'
-            c.fillRect(this.position.x - 1, this.
-            position.y - 1, this.width + 1, this.height + 1)
-    
-            //c.drawImage(this.image, this.position.x, this.position.y)
         }
     }
 
-class Player { //packman
-    constructor ({
-        position,
-        velocity }) {
-        this.position = position 
-        this.velocity = velocity //speed
-        this. radius = (15 / 40) * Boundary.width //увеличили радиус самого пакмана (до этого был 10) !! ПОДУМАТЬ КАК СДЕЛАТЬ АДАПТИВНОСТЬ
-        this.radians = 0.75
-        this.openRate = 0.12
-        this.rotation = 0 
-    }
-
-    draw() { //создаём дугу - круг - пакман
-        c.save() //режим сохранения и обновления
-        c.translate(this.position.x, this.position.y)
-        c.rotate(this.rotation) //делаем так, чтобы пакман крутился при движениии -- число pi значит, что ты поворачиваешься на 180 гард прот час стрелки (Math.PI) -- поменяли на зис.ротатион 
-        c.translate(-this.position.x, -this.position.y)
-        c.beginPath()
-        c.arc (this.position.x, this.position.y, this.radius,
-        this.radians, Math.PI * 2 - this.radians)
-        c.lineTo (this.position.x, this.position.y)
-        c.fillStyle = 'yellow'
-        c.fill()
-        c.closePath()
+    draw() {
+        c.save()
+        c.globalAlpha = this.opacity
+        c.drawImage(this.image, this.position.x, this.position.y, this.width, this.height)
         c.restore()
     }
 
     update() {
-        this.draw() //вызываем предыдущий код с драв
-        this.position.x += this.velocity.x //каждый раз мы просто добавляем к скорости игрока х или у
-        this.position.y += this.velocity.y
-
-        if (this.radians < 0 || this.radians > 0.75) this.openRate = - this.openRate
-            this.radians += this.openRate
+        if (this.image) {//вызываем с.дравимадж, если картинка вообще существует
+        this.draw()
+        this.position.x += this.velocity.x //добавляем скорость х к позиции х игрока при кажд обновлении 
+        }
     }
 }
 
-class Ghost { 
-    static speed = 2
-    constructor ({
-        position, velocity, color = 'red' }) {
-        this.position = position 
-        this.velocity = velocity 
-        this. radius = (15 / 40) * Boundary.width
-        this.color = color
-        this.prevCollisions = []
-        this.speed = 2
-        this.scared = false 
+
+class Invader {
+    constructor({position}) {
+        this.velocity = {
+            x: 0,
+            y: 0
+        }
+
+        const image = new Image()
+        image.src = './img/invader.svg'
+        image.onload =  () => { 
+            const scale = 0.5
+            this.image = image
+            this.width = image.width * scale
+            this.height = image.height * scale
+            this.position = {
+                x: position.x,
+                y: position.y
+            }
+        }
+    }
+       
+    draw() {
+        c.drawImage(this.image, this.position.x, this.position.y, this.width, this.height)
     }
 
-    draw() { 
-        c.beginPath()
-        c.arc (this.position.x, this.position.y, this.radius,
-        0, Math.PI * 2)
-        c.fillStyle = this.scared ? 'blue' : this.color //меняем цвет призрака при поедании паверапа
+    update({velocity}) {
+        if (this.image) {
+        this.draw()
+        this.position.x += velocity.x // не this.velocity тк передаём точку чеоез обновление
+        this.position.y += velocity.y 
+        }
+    }
+
+    //захватчики стреляют
+    shoot(invaderProjectiles) {
+        invaderProjectiles.push(
+            new InvaderProjectile({
+            position: {
+                x: this.position.x + this.width / 2, 
+                y: this.position.y + this.height
+            },
+            velocity: {
+                x: 0,
+                y: 5
+            }
+        }))
+    }
+}
+
+//создание сетки захватчиков (хотя могли бы сделать массив но ладно)
+class Grid {
+    constructor() {
+        this.position = {
+            x: 0,
+            y: 0
+        }
+
+        this.velocity = {
+            x: 4,
+            y: 0
+        }
+
+        this.invaders = [] //отображаем захватчиков -- создавая сетку - создаём нового захватчика
+
+        const column = Math.floor(Math.random() * 8 + 5) 
+        const rows = Math.floor(Math.random() * 5 + 2) //отображаем рандомное кол-во строк до 6, но никогда не меньше 2
+
+        this.width = column * 63
+
+        for(let x = 0; x < column; x++) {
+            for(let y = 0; y < rows; y++) {
+                this.invaders.push(new Invader({position: {
+                    x: x * 65,
+                    y: y * 65
+                }})) //итератор равен нулю, 10 колон, итерация 1 для каждого цикла фор
+            }
+        }
+    }
+    update() {
+        this.position.x += this.velocity.x
+        this.position.y += this.velocity.y
+
+        this.velocity.y = 0
+
+        if (this.position.x + this.width >= canvas.width || this.position.x <= 0) {
+            this.velocity.x = -this.velocity.x
+            this.velocity.y = 30
+        }
+    }
+}
+
+//создаём пульки
+class Projectile {
+    constructor({position, velocity}) {
+        this.position = position
+        this.velocity = velocity
+
+        this.radius = 3.2
+    }
+
+    //РИСУЕМ КРУГЛУЮ ПУЛЬКУ
+    draw() {
+        c.beginPath() //НАЧАЛИ ДУГУ
+        c.arc(this.position.x, this.position.y, this.radius, 0, Math.PI * 2)  //обвели точку дугой -- создание круга
+        c.fillStyle = 'red'
         c.fill()
-        c.closePath()
+        c.closePath() //ЗАКОНЧИЛИ ДУГУ 
+    }
+
+    update() {
+        this.draw() // отображаем пульку
+        this.position.x += this.velocity.x //добавляем скорость пулек
+        this.position.y += this.velocity.y
+    }
+}
+
+//создаём частицы, разлетающиеся при удалении
+class Particle {
+    constructor({position, velocity, radius, color, fades}) {
+        this.position = position
+        this.velocity = velocity
+
+        this.radius = radius
+        this.color = color 
+        this.opacity = 1
+        this.fades = fades
+    }
+
+    draw() {
+        c.save()
+        c.globalAlpha = this.opacity //исчезновение частиц
+        c.beginPath() 
+        c.arc(this.position.x, this.position.y, this.radius, 0, Math.PI * 2)  
+        c.fillStyle = this.color
+        c.fill()
+        c.closePath() 
+        c.restore()
+    }
+
+    update() {
+        this.draw() 
+        this.position.x += this.velocity.x 
+        this.position.y += this.velocity.y
+
+        if (this.fades) this.opacity -= 0.01
+    }
+}
+
+//пульки захватчиков
+class InvaderProjectile {
+    constructor({position, velocity}) {
+        this.position = position
+        this.velocity = velocity
+
+        this.width = 3
+        this.height = 10
+    }
+
+    draw() {
+        c.fillStyle = 'white'
+        c.fillRect(this.position.x, this.position.y, this.width, this.height)
     }
 
     update() {
@@ -97,616 +223,310 @@ class Ghost {
     }
 }
 
-class Pellet { //food
-    constructor ({position }) {
-        this.position = position 
-        this. radius = (2 / 40) * Boundary.width //увеличили радиус самого пакмана (до этого был 10) !! ПОДУМАТЬ КАК СДЕЛАТЬ АДАПТИВНОСТЬ
-    }
+const player = new Player()
+const projectiles = []
+const grids = [] //создаём массив из нескольких сеток
+const invaderProjectiles = []
+const particles = []
 
-    draw() { //создаём дугу - круг - пакман
-        c.beginPath()
-        c.arc (this.position.x, this.position.y, this.radius,
-        0, Math.PI * 2)
-        c.fillStyle = 'white'
-        c.fill()
-        c.closePath()
-    }
-}
-
-class PowerUp {
-    constructor ({position }) {
-        this.position = position 
-        this. radius = (8 / 40) * Boundary.width
-    }
-
-    draw() { 
-        c.beginPath()
-        c.arc (this.position.x, this.position.y, this.radius,
-        0, Math.PI * 2)
-        c.fillStyle = 'white'
-        c.fill()
-        c.closePath()
-    }
-}
-
-const pellets = []
-const powerUps = []
-const  boundaries = [] 
-const ghosts = [
-    new Ghost ({
-        position: {
-            x: Boundary.width * 18 + Boundary.width * 2.5 ,  
-            y: Boundary.height + Boundary.height * 1.5
-        },
-        velocity: {
-            x: Ghost.speed,
-            y: 0
-        }
-    }),
-    new Ghost ({
-        position: {
-            x: Boundary.width * 18 + Boundary.width * 2.5 ,  
-            y: Boundary.height * 19 + Boundary.height * 1.5
-        },
-        velocity: {
-            x: Ghost.speed,
-            y: 0
-        }
-    }),
-    new Ghost ({
-        position: {
-            x: Boundary.width * 1 + Boundary.width * 2.5 ,  
-            y: Boundary.height * 19 + Boundary.height * 1.5
-        },
-        velocity: {
-            x: Ghost.speed,
-            y: 0
-        }
-    })
-    
-]
-
-const player = new Player ({
-    position: {
-        x: Boundary.width + Boundary.width * 2.5 , //ширина границы + 1\2 ширины границы = серидина границы 
-        y: Boundary.height + Boundary.height * 1.5
-    },
-    velocity: {
-        x:0,
-        y:0
-    }
-})
-
-// создаём переменные букв (кнопок) - определяет, какие кнопки нажимаются
-const keys = {
-    w: {
-        pressed: false //нажата w  по умолчанию ? - нет - false
-    },
+const keys = { //отследивание клавиш -- нажата? проигрывам! не нажата? стопаемся!
     a: {
-        pressed: false
-    },
-    s: {
         pressed: false
     },
     d: {
         pressed: false
+    },
+    space: {
+        pressed: false
     }
 }
 
-let lastKey = "" //установили последнюю нажатую кнопку, чтобы ничего не паехалоо, как моя крыша
+let frames = 0
+let randomInterval = Math.floor(Math.random() * 500 + 1100) //создание второго грида с захватчиками
+let game = {
+    over: false,
+    active: true
+}
 let score = 0
 
-const map = [
-    [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
-    [' ', ' ', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', ' ', ' ', ' ', '-', '-', '-', '-', '-', '-', '-', '-', '-', ' ', ' ', ' ', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', ' '],
-    [' ', ' ', '-', '.', '.', '.', '.', '.', '.', '.', '.', 'p', '-', '-', '-', '-', '-', '.', '.', '.', '.', '.', '.', '.', '-', '-', '-', '-', '-', '.', '.', '.', '.', '.', '.', '.', '.', 'p', '-', ' '],
-    [' ', ' ', '-', '.', '-', '-', '-', '.', '-', '-', '-', '.', '.', '.', '.', '.', '.', '.', '-', '-', '-', '-', '-', '.', '.', '.', '.', '.', '.', '.', '-', '-', '-', '.', '-', '-', '-', '.', '-', ' '],
-    [' ', ' ', '-', '.', '.', '.', '-', '.', '-', '.', '.', '.', '-', '-', '-', '-', '-', '.', '.', '.', '.', '.', '.', '.', '-', '-', '-', '-', '-', '.', '.', '.', '-', '.', '-', '.', '.', '.', '-', ' '],
-    [' ', ' ', '-', '-', '-', '.', '-', '.', '-', '.', '-', '.', '-', '.', '.', '.', '.', '.', '-', '-', '-', '-', '-', '.', '.', '.', '.', '.', '-', '.', '-', '.', '-', '.', '-', '.', '-', '-', '-', ' '],
-    [' ', ' ', '-', '.', '.', '.', '-', '.', '.', '.', '.', '.', '-', '.', '-', '-', '-', '.', '.', '.', '-', '.', '.', '.', '-', '-', '-', '.', '-', '.', '.', '.', '.', '.', '-', '.', '.', '.', '-', ' '],
-    [' ', ' ', '-', '.', '-', '.', '-', '.', '-', '.', '-', '.', '-', '.', '-', '-', '-', '.', '-', '.', '-', '.', '-', '.', '-', '-', '-', '.', '-', '.', '-', '.', '-', '.', '-', '.', '-', '.', '-', ' '],
-    [' ', ' ', '-', '.', '-', '.', '-', '.', '.', '.', '-', '.', '-', '.', '.', '.', '.', '.', '-', '.', '.', '.', '-', 'p', '.', '.', '.', '.', '-', '.', '-', '.', '.', '.', '-', '.', '-', '.', '-', ' '],
-    [' ', ' ', '-', '.', '-', '.', '.', '.', '-', '-', '-', '.', '.', '.', '-', '.', '-', '-', '-', '.', '-', '.', '-', '-', '-', '.', '-', '.', '.', '.', '-', '-', '-', '.', '.', '.', '-', '.', '-', ' '],
-    [' ', ' ', '-', '.', '.', '.', '-', '.', '.', '.', '.', '.', '-', '.', '-', '.', '.', '.', '.', '.', '-', '.', '.', '.', '.', '.', '-', '.', '-', '.', '.', '.', '.', '.', '-', '.', '.', '.', '-', ' '],
-    [' ', ' ', '-', '-', '-', '.', '-', '-', '.', '-', '-', '-', '-', '.', '-', '-', '-', '.', '-', '-', '-', '-', '-', '.', '-', '-', '-', '.', '-', '-', '-', '-', '.', '-', '-', '.', '-', '-', '-', ' '],
-    [' ', ' ', '-', '.', '.', '.', '-', '.', '.', '.', '.', '.', '-', '.', '-', '.', '.', '.', '.', '.', '-', '.', '.', '.', '.', '.', '-', '.', '-', '.', '.', '.', '.', '.', '-', '.', '.', '.', '-', ' '],
-    [' ', ' ', '-', '.', '-', '.', '-', '.', '-', '-', '-', '.', '.', '.', '-', '.', '-', '-', '-', '.', '-', '.', '-', '-', '-', '.', '-', '.', '.', '.', '-', '-', '-', '.', '-', '.', '-', '.', '-', ' '],
-    [' ', ' ', '-', '.', '-', '.', '.', '.', '.', '.', '-', '.', '-', '.', '.', '.', '.', 'p', '-', '.', '.', '.', '-', '.', '.', '.', '.', '.', '-', '.', '-', '.', '.', '.', '.', '.', '-', '.', '-', ' '],
-    [' ', ' ', '-', '.', '-', '.', '-', '.', '-', '.', '-', '.', '-', '.', '-', '-', '-', '.', '-', '.', '-', '.', '-', '.', '-', '-', '-', '.', '-', '.', '-', '.', '-', '.', '-', '.', '-', '.', '-', ' '],
-    [' ', ' ', '-', '.', '.', '.', '-', '.', '.', '.', '.', '.', '-', '.', '-', '-', '-', '.', '.', '.', '-', '.', '.', '.', '-', '-', '-', '.', '-', '.', '.', '.', '.', '.', '-', '.', '.', '.', '-', ' '],
-    [' ', ' ', '-', '.', '-', '-', '-', '.', '-', '.', '-', '.', '-', '.', '.', '.', '.', '.', '-', '-', '-', '-', '-', '.', '.', '.', '.', '.', '-', '.', '-', '.', '-', '.', '-', '-', '-', '.', '-', ' '],
-    [' ', ' ', '-', '.', '.', '.', '-', '.', '-', '.', '.', '.', '-', '-', '-', '-', '-', '.', '.', '.', '.', '.', '.', '.', '-', '-', '-', '-', '-', '.', '.', '.', '-', '.', '-', '.', '.', '.', '-', ' '],
-    [' ', ' ', '-', '.', '-', '.', '.', '.', '-', '-', '-', '.', '.', '.', '.', '.', '.', '.', '-', '-', '-', '-', '-', '.', '.', '.', '.', '.', '.', '.', '-', '-', '-', '.', '.', '.', '-', '.', '-', ' '],
-    [' ', ' ', '-', 'p', '.', '.', '-', '.', '.', '.', '.', '.', '-', '-', '-', '-', '-', '.', '.', '.', '.', '.', '.', '.', '-', '-', '-', '-', '-', 'p', '.', '.', '.', '.', '-', '.', '.', '.', '-', ' '],
-    [' ', ' ', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', ' ', ' ', ' ', '-', '-', '-', '-', '-', '-', '-', '-', '-', ' ', ' ', ' ', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', ' '],
-    [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']
-]
-    //генерация каждого нового квадрата + мы перенесли карту для облегчения кода
+//звёзды на бэкграунде
+for(let i = 0; i < 100; i++) {
+    particles.push(new Particle({
+        position:{ //рандомное расположение звёзд на фоне по оси х и y
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height
+        }, 
+        velocity: {
+            x: 0,
+            y: 0.2 //опускаются по оси х -- скорость
+        },
+        radius: Math.random() * 2,
+        color:'white'
+}))}
 
-//создаём картинку к границам не вызывая её каждый раз, а с помощью ретёрна
-// function creatImage(src) {
-//     const image = new Image () //вставили картинку !!source = src!!
-//     image.src = src
-//     return image
-// }
-console.log(map.length, map[0].length)
-map.forEach((row, i) => { //i представляет в какой строке мы находимся в данный момент нашего цикла (индекс)
-    row.forEach((symbol, j) => {
-        switch (symbol) {
-            case '-':
-                boundaries.push(
-                    new Boundary({
-                        position: {
-                            x: Boundary.width * j,
-                            y: Boundary.height * i
-                        },
-                    })
-                )
-                break
-            case '.': //создаём еду для пакмана -- массив
-                pellets.push (
-                    new Pellet ({
-                        position: {
-                            x: j * Boundary.width + Boundary.width / 2,
-                            y: i * Boundary.height + Boundary.height / 2
-                        }
-                    })
-                ) 
-                break
-
-                case 'p': //создаём еду для пакмана -- массив
-                powerUps.push (
-                    new PowerUp ({
-                        position: {
-                            x: j * Boundary.width + Boundary.width / 2,
-                            y: i * Boundary.height + Boundary.height / 2
-                        }
-                    })
-                ) 
-                break
-        }
-    })
-})
-
-function circleCollidesWithRectangle ({ circle, rectangle }) { //столкновение круга и квадрата
-    const padding = Boundary.width / 2 - circle.radius - 1
-    return(
-        circle.position.y - circle.radius + circle.velocity.y 
-        <= 
-        rectangle.position.y + rectangle.height + padding && 
-        circle.position.x + circle.radius + circle.velocity.x 
-        >= 
-        rectangle.position.x - padding && 
-        circle.position.y + circle.radius +  circle.velocity.y 
-        >= 
-        rectangle.position.y - padding && 
-        circle.position.x - circle.radius + circle.velocity.x 
-        <= 
-        rectangle.position.x + rectangle.width + padding
-    )
+function createParticles({object, color, fades})  {
+    //ЧАСТИЦЫ РАЗЛЕТАЮТСЯ ПРИ УДАРЕ корабля с ПУЛЬКОЙ
+    for(let i = 0; i < 15; i++) {
+        particles.push(new Particle({
+            position:{
+                x: object.position.x + object.width / 2, //середина по оси х и у
+                y: object.position.y + object.width / 2
+            }, 
+            velocity: {
+                x: (Math.random() - 0.5) * 2,
+                y: (Math.random() - 0.5) * 2
+            },
+            radius: Math.random() * 3,
+            color: color || '#00FF00',
+            fades
+    }))}
 }
 
-let animationId
-//создаём зацикленную анимацию, чтобы пакман двигался
-function animate() {
-    animationId = requestAnimationFrame(animate) 
-    //будет анимировать пкамана пока мы не скажем ему делать движения иначе
-    c.clearRect(0, 0, canvas.width, canvas.height) //чтобы не было хвостика за пакманом
+function animate () {
+    if (!game.active) return //если игра не активна -- весь последующий код не активируется
+    requestAnimationFrame(animate)
+    c.fillStyle = 'black' 
+    c.fillRect(0, 0, canvas.width, canvas.height)
+    player.update()
+    particles.forEach((particle, i) => {
 
-    // function close() {
-    //     let rr = document.getElementById("rr");
-    //     rr.style.display="none";
-    //     let bb = document.getElementById("close");
-    //     bb.style.display="block"; 
-    // }
+            //зациклили появление звёзд на бэке -- появление на осях
+            if (particle.y - particle.radius >= canvas.height) {
+                particle.position.x = Math.random() * canvas.width
+                particle.position.y = -particle.radius
+            }
 
+        if(particle.opacity <= 0) {
+            setTimeout(() => {
+                particles.splice(i, 1)
+            }, 0) 
+            } else {
+                particle.update()
+            }
+    })
 
-    function endScreen() {
-        let rr = document.getElementById("rr");
-        rr.style.display="none";
-        let aa = document.getElementById("endScreen");
-        aa.style.display="flex"; 
+    invaderProjectiles.forEach((invaderProjectile, index) => {
+        if(invaderProjectile.position.y + invaderProjectile.height >= canvas.height) {
+            setTimeout(() => {
+                invaderProjectiles.splice(index, 1)    
+            }, 0)
+        } else invaderProjectile.update()
 
-        let bb = document.getElementById("close");
-        bb.style.display="block";
-    }
+        
+        //код обнаружения столкновения пульки и корабля
+        if(
+            invaderProjectile.position.y + invaderProjectile.height 
+            >= 
+            player.position.y && 
+            invaderProjectile.position.x + invaderProjectile.width 
+            >= 
+            player.position.x &&
+            invaderProjectile.position.x <= player.position.x +
+            player.width
+        ) { 
+            console.log('you lose')
 
-    function close(){
-        let bb = document.getElementById("close");
-        bb.style.display="block";
-    }
+            setTimeout(() => { //при попадании в игрока снаряд исчезает
+                invaderProjectiles.splice(index, 1)    
+                player.opacity = 0
+                game.over = true
+            }, 0)
 
-    canvas.addEventListener("click", function(close){
-        let rr = document.getElementById("rr");
-        rr.style.display="flex";
-        let aa = document.getElementById("endScreen");
-        aa.style.display="none"; 
+            setTimeout(() => { 
+                game.active = false
+            }, 2000) //игра анимируется в теч 2 сек после проигрыша
+
+            createParticles({
+                object: player,
+                color: '#00FF00',
+                fades: true
+            })
+        }
     })
 
 
-    // цикл анимации скорости
-    if (keys.w.pressed && lastKey === 'w') {
-        for (let i = 0; i < boundaries.length; i++) { //i -- итератор; добавляем 1 к i, пока она не станет больше длинны границ
-            const boundary = boundaries [i]
-            if (
-            circleCollidesWithRectangle({
-                circle: {
-                    ...player, 
-                    velocity: {
-                        x: 0,
-                        y: -(8 / 40) * Boundary.height
-                }
-                }, //многоточие -- spread
-                rectangle: boundary
-            })
-        ) {
-            player.velocity.y = 0
-            break
+
+    projectiles.forEach ((projectile, index) => {
+
+        if (projectile.position.y + projectile.radius <= 0){ //нижняя ачсть снаряда < или = 0 -- находится за пределами верхней части экрана
+            setTimeout(() => {
+                projectiles.splice(index, 1)    
+            }, 0) //нам нужен один доп кадр -- предотвращ имигание на экране -- избавились от двойных пулек
         } else {
-            player.velocity.y = -(8 / 40) * Boundary.height
-        }
-        }
-
-    } else if (keys.a.pressed && lastKey === 'a') {
-        for (let i = 0; i < boundaries.length; i++) { //i -- итератор; добавляем 1 к i, пока она не станет больше длинны границ
-            const boundary = boundaries [i]
-            if (
-            circleCollidesWithRectangle({
-                circle: {
-                    ...player, 
-                    velocity: {
-                        x: -(8 / 40) * Boundary.width, //боковушка
-                        y: 0
-                }
-                }, //многоточие -- spread
-                rectangle: boundary
-            })
-        ) {
-            player.velocity.x = 0
-            break
-        } else {
-            player.velocity.x = -(8 / 40) * Boundary.width //идём влево, когда нажимаем клавишу а
-        }
-        }
-    } else if (keys.s.pressed && lastKey === 's') {
-        for (let i = 0; i < boundaries.length; i++) { //i -- итератор; добавляем 1 к i, пока она не станет больше длинны границ
-            const boundary = boundaries [i]
-            if (
-            circleCollidesWithRectangle({
-                circle: {
-                    ...player, 
-                    velocity: {
-                        x: 0,
-                        y: (8 / 40) * Boundary.height
-                }
-                }, //многоточие -- spread
-                rectangle: boundary
-            })
-        ) {
-            player.velocity.y = 0
-            break
-        } else {
-            player.velocity.y = (8 / 40) * Boundary.height
-        }
-        }
-
-    } else if (keys.d.pressed && lastKey === 'd') {
-        for (let i = 0; i < boundaries.length; i++) { //i -- итератор; добавляем 1 к i, пока она не станет больше длинны границ
-            const boundary = boundaries [i]
-            if (
-            circleCollidesWithRectangle({
-                circle: {
-                    ...player, 
-                    velocity: {
-                        x: (8 / 40) * Boundary.width,
-                        y: 0
-                }
-                }, //многоточие -- spread
-                rectangle: boundary
-            })
-        ) {
-            player.velocity.x = 0
-            break
-        } else {
-            player.velocity.x = (8 / 40) * Boundary.width
-        }
-        }
-    }
-
-    //коллизия между призраком и играком
-    for (let i = ghosts.length - 1; 0 <= i; i -- ) {
-        const ghost = ghosts [i]
-     //призрак докасается до игрока - проигрывем 
-    if (
-        Math.hypot (
-            ghost.position.x - player.position.x,
-            ghost.position.y - player.position.y
-        )   < 
-            ghost.radius + player.radius 
-        )   {
-            if (ghost.scared){ // если призрак синий, то мы касаемся его и удалем из игры
-                ghosts.splice (i, 1)
-            }
-            else {
-                cancelAnimationFrame(animationId)
-                console.log ('You lose :(')
-                endScreen()
-            }
-        }
-    }
-
-    //
-    if (pellets.length === 0) {
-        console.log ('you win')
-        cancelAnimationFrame(animationId)
-    }
-
-
-    //делаем точечку для буста очков 
-    for (let i = powerUps.length - 1; 0 <= i; i -- ) {
-        const powerUp = powerUps [i]
-        powerUp.draw() 
-
-        //столкновение пакмана с поверапом
-        if (
-            Math.hypot (
-                powerUp.position.x - player.position.x,
-                powerUp.position.y - player.position.y
-            )   < 
-            powerUp.radius + player.radius
-        ) {
-            powerUps.splice(i, 1)
-
-            //отгоныем приведений
-            ghosts.forEach ((ghost) => {
-                ghost.scared = true 
-
-                setTimeout(() => {
-                    ghost.scared = false
-                }, 5000)
-            })
-        }
-
-    }
-
-    //движение с конца (?) -- зацикливаемся и удалаем с обратной стороны
-    for (let i = pellets.length - 1; 0 <= i; i -- ) {
-        const pellet = pellets [i]
-        pellet.draw()
-
-        //прописываем поедание точечек -- гипотинуза -- самая длинная сторона прям треугольника -- расст между центрома точечки и центром игрока
-        if (
-            Math.hypot (
-                pellet.position.x - player.position.x,
-                pellet.position.y - player.position.y
-            )   < 
-            pellet.radius + player.radius
-        )   {
-            pellets.splice(i, 1)
-            score += 10 //считаем съеденные шарики
-            scoreEl.innerHTML = score
-        }
-    } 
-    
-
-    boundaries.forEach((boundary) => {
-        boundary.draw()
-
-        //распознаём барьеры, перпятствия 
-        //пересекается ли одна из границ с нашим игроком?
-        //сравниваем сторону грока со сторонами границы 
-        //если верхняя часть игрока меньше точки, где проходит нижняя граница кубика - эти две тчк равны
-        if (
-            circleCollidesWithRectangle({
-                circle: player,
-                rectangle: boundary
-            })
-            // player.position.y - player.radius + player.velocity.y 
-            // <= 
-            // boundary.position.y + boundary.height && 
-            // player.position.x + player.radius + player.velocity.x 
-            // >= 
-            // boundary.position.x && 
-            // player.position.y + player.radius +  player.velocity.y 
-            // >= 
-            // boundary.position.y && 
-            // player.position.x - player.radius + player.velocity.x 
-            // <= 
-            // boundary.position.x + boundary.width
-        ) {
-            //console.log('we are colliding')
-            player.velocity.x = 0
-            player.velocity.y = 0
+            projectile.update() //вызываем снаряд и апдейтим его
         }
     })
-    player.update () //раньше здесь было player.draw (), но за дров теперь отвечает апдейт тк скорость игрока каждый раз увеличивается
 
+    grids.forEach((grid, gridIndex) => { //все захватчики в сетке
+        grid.update()
+        
+        //создаём спульки
+        if (frames % 100 === 0 && grid.invaders.length > 0) {//пускаем пульку на каждый сотый кадр и если в текущей сетке есть захватчики, то переходим к след шагу
+            grid.invaders[Math.floor(Math.random() * grid.invaders.length)].shoot(invaderProjectiles) //выбрали случайного захватчика, который будет стрелять
+        }
 
-    //движение призрака!!!!!!!!!!!!!!!!
-    ghosts.forEach ((ghost) => {
-        ghost.update()
+        grid.invaders.forEach((invader, i) => { //отображаем захватчика на экране при обновлении
+            invader.update({velocity: grid.velocity})
 
+            //пульки удаляют захватчика
+            projectiles.forEach((projectile, j) => {
+                if (projectile.position.y - projectile.radius <= 
+                    invader.position.y + invader.height && 
+                projectile.position.x + projectile.radius >= 
+                    invader.position.x && 
+                projectile.position.x - projectile.radius <= 
+                    invader.position.x + invader.width && 
+                projectile.position.y + projectile.radius >= 
+                    invader.position.y) {//удаляем захватчика если верхняя часть снаряда меньше нижней части одного из захватчиков
 
+                    setTimeout(() => { //стреляем и удаляем захватчиков
+                        const invaderFound = grid.invaders.find( //просматриваем нашли ли мы захватчика, если он равен захватчику2
+                            (invader2) => invader2 === invader 
+                        ) 
 
-        const collisions = []
-        boundaries.forEach(boundary => {
-            if (
-                !collisions.includes('right') &&
-                circleCollidesWithRectangle({
-                    circle: {
-                        ...ghost, 
-                        velocity: {
-                            x: ghost.speed,
-                            y: 0
-                    }
-                    }, 
-                    rectangle: boundary
-                })
-            ) {
-                collisions.push ('right')
-            }
+                        const projectileFound = projectiles.find(
+                            (projectile2) => projectile2 ===  projectile
+                        )
 
-            if (
-                !collisions.includes('left') &&
-                circleCollidesWithRectangle({
-                    circle: {
-                        ...ghost, 
-                        velocity: {
-                            x: -ghost.speed,
-                            y: 0
-                    }
-                    }, 
-                    rectangle: boundary
-                })
-            ) {
-                collisions.push ('left')
-            }
-            if (
-                !collisions.includes('up') &&
-                circleCollidesWithRectangle({
-                    circle: {
-                        ...ghost, 
-                        velocity: {
-                            x: 0,
-                            y: -ghost.speed
-                    }
-                    }, 
-                    rectangle: boundary
-                })
-            ) {
-                collisions.push ('up')
-            }
+                        //убираем захватчика и пульку
+                        if (invaderFound && projectileFound) {
+                            score += 100
+                            scoreEl.innerHTML = score
 
-            if (
-                !collisions.includes('down') &&
-                circleCollidesWithRectangle({
-                    circle: {
-                        ...ghost, 
-                        velocity: {
-                            x: 0,
-                            y: ghost.speed
-                    }
-                    }, 
-                    rectangle: boundary
-                })
-            ) {
-                collisions.push ('down')
-            }
+                            createParticles({
+                                object: invader,
+                                fades: true
+                            })
+
+                        
+                            grid.invaders.splice(i, 1)
+                            projectiles.splice(j, 1)
+
+                            //чтобы новая сетка правильно отталкивалась отлевого края
+                            if (grid.invaders.length > 0) {
+                                const firstInvader = grid.invaders[0]
+                                const lastInvader = grid.invaders[grid.invaders.length -1]
+
+                                grid.width = lastInvader.position.x - firstInvader.position.x + lastInvader.width
+                                grid.position.x = firstInvader.position.x 
+                            }else {
+                                grids.splice(gridIndex, 1)
+                            }
+                        }
+                    }, 0)
+            
+        }})
         })
-        if (collisions.length > ghost.prevCollisions.length)
-            ghost.prevCollisions = collisions
-
-        if (JSON.stringify (collisions) !== JSON.stringify (ghost.prevCollisions)) //json.stringify -- строчное значение
-        {
-            if (ghost.velocity.x > 0) ghost.prevCollisions.push('right')
-            else if (ghost.velocity.x < 0) ghost.prevCollisions.push('left') //движ влевоо, если скорость по х меньше нуля
-            else if (ghost.velocity.y < 0) ghost.prevCollisions.push('up')
-            else if (ghost.velocity.y > 0) ghost.prevCollisions.push('down')
-
-            //console.log(collisions)
-            //console.log(ghost.prevCollisions)
-
-            const pathways = ghost.prevCollisions.filter((collision //потенциальные пути -- фильтр столкновений 
-                ) => {
-                return !collisions.includes(collision)
-            }) 
-            //console.log ({ pathways })
-
-            const direction = pathways [Math.floor (Math.random() * pathways.length)] //рандомный выбор пафвэя (пути, куда идёт призрак); math.floor - целочисленные (те без дробей)
-
-            //console.log ({direction})
-
-            switch (direction) {
-                case 'down':
-                    ghost.velocity.y = ghost.speed
-                    ghost.velocity.x = 0
-                    break
-
-                case 'up':
-                    ghost.velocity.y = -ghost.speed
-                    ghost.velocity.x = 0
-                    break
-
-                case 'right':
-                    ghost.velocity.y = 0
-                    ghost.velocity.x = ghost.speed
-                    break
-
-                case 'left':
-                    ghost.velocity.y = 0
-                    ghost.velocity.x = -ghost.speed
-                break
-            }
-            ghost.prevCollisions = []
-        }
-        //console.log(collisions)
     })
-    if (player.velocity.x > 0) player.rotation = 0
-    else if (player.velocity.x < 0) player.rotation = Math.PI
-    else if (player.velocity.y > 0) player.rotation = Math.PI / 2
-    else if (player.velocity.y < 0) player.rotation = Math.PI * 1.5
+
+    const vel = 8 //установили константу для скорости корабля
+
+    if (keys.a.pressed && player.position.x >= 0) { //нажимая клавишу а двиг влево, а перемещ лев сторону игрока если она > или = нулю -- создали границу слева 
+        player.velocity.x = -vel //перемещение влево
+    } else if (keys.d.pressed && player.position.x + player.width <= canvas.width) { //тут не if else, а else if (что странно, надо разобраться почему!!!) + && далее установка границ справа 
+        player.velocity.x = vel
+    } else {
+        player.velocity.x = 0
+    }
+
+    //создаём ещё одну сетку с захватчиками -- функция интервала для появления врагов 
+    if (frames % randomInterval === 0) { //достигая тысячи появляется ещё одна сетка врагов -- теперь делаем на рандом -- если получили 0 - то будет минимум 500 -- переменная randomInterval
+        grids.push(new Grid())
+        randomInterval = Math.floor(Math.random() * 500 + 400)
+        frames = 0
+    }
+
+    frames++ //значик, что мы прошли один цикл нашей анимации (добавили + 1 кадр)
 }
 
 animate()
 
-//прослушиватели событий (считываем нажатие кнопки)
-//позже установим скорость в цикле анимации (?)
-//убрали скорость тк теперь оно само определяем правда ли, что кнопка нажата или нет
-addEventListener('keydown', ({key}) => {
+//({}) -- деструктурирование объекта
+addEventListener('keydown', ({ key }) => {
+    // if(key == 'a' || key == 'd' || key == ' '){ closeStudyscreen() }
+    if (game.over) return //при проигрыше -- кораблик больше не стреляет
+
     switch (key) {
-        case 'w':
-            keys.w.pressed = true
-            lastKey = 'w' //предопределение последней нажатой клавиши, чтобы ничего не поехало
-            break
         case 'a':
-            keys.a.pressed = true
-            lastKey = 'a'
-            break
-        case 's':
-            keys.s.pressed = true
-            lastKey = 's'
-            break
+            //console.log('left')
+            keys.a.pressed = true //кнопка нажата? - да! -- проигрываем! нет? -- стопаемся!
+        break
         case 'd':
+            //console.log('right')
             keys.d.pressed = true
-            lastKey = 'd'
-            break
+        break
+        case ' ': //при нажатии пробела пулька летит вверх
+            //console.log('space')
+            projectiles.push(new Projectile({ //ПУЛЬКИ ПОЗИШН + СКОРОСТЬ
+        position: {
+            x: player.position.x + player.width / 2, //пульки летят левее тк оттуда начинается пллоскость координат
+            y: player.position.y
+        },
+        velocity:{
+            x: 0,
+            y: -8
+        }
+        }))
+        break
     }
-
 })
 
-//keyup -- чтобы  он не двигался бесконечно по диагонали прописываем скорость на нулях
-//убрали скорость как и в кейдаун тк если кнопка не нажата - не проигрываем
-addEventListener('keyup', ({key}) => {
+//остановка при достижении нужной скорости
+addEventListener('keyup', ({ key }) => {
     switch (key) {
-        case 'w':
-            keys.w.pressed = false
-            //player.velocity.y = 0
-            break
         case 'a':
+           // console.log('left')
             keys.a.pressed = false
-            //player.velocity.x = 0
-            break
-        case 's':
-            keys.s.pressed = false
-            //player.velocity.y = 0
-            break
+        break
         case 'd':
+            //console.log('right')
             keys.d.pressed = false
-            //player.velocity.x = 0
-            break
+        break
+        case ' ':
+            //console.log('space')
+        break
     }
-
-
 })
 
+addEventListener('click', mouse => {
+    if(state == 'deathscreen'){
+        closeDeathscreen()
+    }
+    else{
+        console.log("kjfwijefiwoe")
+        closeStudyScreenSpace()
+    }
+})
 
-// window.addEventListener('click', () => {
-//     document.getElementById("song").play();
-// });
+//экран при состоянии проигрышка
+function endScreenSpace() {
+    state = 'deathscreen'
+    let ess = document.getElementById("endScreenSpace");
+    ess.style.display="flex"; 
+    let cl = document.getElementById("close");
+    cl.style.display="flex";
+}
 
+newGame()
+function closeDeathscreen(){
+    let spaceCanvas = document.getElementById("spaceCanvas");
+    spaceCanvas.style.display="block";
+    let ess = document.getElementById("endScreenSpace");
+    ess.style.display="none";
+    let cl = document.getElementById("close");
+    cl.style.display="none";
+    
+    p2.style.color="white";
+    newGame()
+}
 
-window.addEventListener("DOMContentLoaded", event => {
-    const audio = document.querySelector("audio");
-    audio.volume = 0.2;
-    audio.play();
-  });
+//экран обучения
+function closeStudyScreenSpace(){
+    let sss = document.getElementById("studyScreenSpace");
+    sss.style.display="none";
+    let cl3 = document.getElementById("close3");
+    //cl3.style.display="none";
+}
+
+});
+

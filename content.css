@@ -1,0 +1,55 @@
+@font-face {
+    font-family: "MultiTypePixelDisplay";
+    src: url("./fonts/MultiTypePixelDisplay.otf") format("truetype");
+    font-style: normal;
+    font-weight: normal;
+} 
+
+#p2{
+    position: fixed;
+    z-index: 10;
+    color: white;
+    left: 1%;
+    top: 1%;
+    margin: 0;
+    font-family: "MultiTypePixelDisplay"; 
+    font-size: 14px
+}
+
+#spaceCanvas{
+    color: white;
+    /* margin-top: 4%;
+    margin-bottom: -4%;
+    margin-left: 3.1%; */
+    display: block;
+    z-index: 33;
+}
+
+#studyScreenSpace {
+    z-index: 4;
+    position: absolute;
+    display: flex;
+    justify-content: center;
+    align-self: center;
+    margin-top: -42%;
+    margin-left: 16.9%;
+}
+
+#close3 {
+    margin-top: 3%;
+    margin-left: -7%;
+    width: 3vw;
+    height: 3vw;
+    display: flex;
+    z-index: 5;
+}
+
+#deadinspace {
+    z-index: 4;
+    position: absolute;
+    display: flex;
+    justify-content: center;
+    align-self: center;
+    margin-top: -42%;
+    margin-left: 16.9%;
+}
